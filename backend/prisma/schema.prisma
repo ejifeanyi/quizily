@@ -1,0 +1,80 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  name         String?
+  password     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  textbooks    Textbook[]
+  summaries    Summary[]
+  quizzes      Quiz[]
+  quizResults  QuizResult[]
+}
+
+model Textbook {
+  id         String          @id @default(uuid())
+  title      String
+  content    String          @db.Text
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  userId     String
+  user       User            @relation(fields: [userId], references: [id])
+  summaries  Summary[]
+  chunks     TextbookChunk[]
+}
+
+model TextbookChunk {
+  id         String   @id @default(uuid())
+  content    String   @db.Text
+  metadata   Json
+  index      Int
+  createdAt  DateTime @default(now())
+  textbookId String
+  textbook   Textbook @relation(fields: [textbookId], references: [id])
+}
+
+model Summary {
+  id         String    @id @default(uuid())
+  content    String    @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  textbookId String
+  textbook   Textbook  @relation(fields: [textbookId], references: [id])
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  quizzes    Quiz[]
+}
+
+model Quiz {
+  id          String       @id @default(uuid())
+  questions   Json
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  summaryId   String
+  summary     Summary      @relation(fields: [summaryId], references: [id])
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  quizResults QuizResult[]
+}
+
+model QuizResult {
+  id        String   @id @default(uuid())
+  score     Float
+  answers   Json?    // Store array of {questionId, userAnswer, isCorrect, questionText}
+  createdAt DateTime @default(now())
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}

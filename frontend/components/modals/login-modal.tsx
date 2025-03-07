@@ -81,7 +81,7 @@ const Login = () => {
 						Welcome back
 					</DialogTitle>
 					<DialogDescription className="text-muted-foreground">
-						Log in to your account to access your watchlists and alerts.
+						Log in to your account to access your summarized textbooks and start getting quizzed.
 					</DialogDescription>
 				</DialogHeader>
 

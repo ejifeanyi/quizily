@@ -109,8 +109,8 @@ const Signup = () => {
 						Create an account
 					</DialogTitle>
 					<DialogDescription className="text-muted-foreground">
-						Join Watchdog to start monitoring your investments and receive
-						custom alerts.
+						Join Quizily and start getting your textbooks summarized and
+						quizzed. It&apos;s free! 🚀
 					</DialogDescription>
 				</DialogHeader>
 

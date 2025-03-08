@@ -9,6 +9,7 @@ import {
 } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import { useRouter } from "next/navigation";
 
 interface User {
 	userId: string;
@@ -36,14 +37,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [showLoginModal, setShowLoginModal] = useState(false);
 	const [showSignupModal, setShowSignupModal] = useState(false);
+	const router = useRouter();
+
+	// Base URL for API requests
+	const apiBaseUrl =
+		process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
 
 	// Load user from token on page refresh
 	useEffect(() => {
 		const token = localStorage.getItem("token");
 		if (token) {
 			try {
-				const decoded = jwtDecode<User & { exp: number }>(token); // Include 'exp' field
-				const currentTime = Date.now() / 1000; // Convert to seconds
+				const decoded = jwtDecode<User & { exp: number }>(token);
+				const currentTime = Date.now() / 1000;
 
 				if (decoded.exp < currentTime) {
 					console.error("Token expired");
@@ -60,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	}, []);
 
 	const login = async (email: string, password: string) => {
-		const res = await axios.post(`${process.env.BASE_URL}/api/auth/login`, {
+		const res = await axios.post(`${apiBaseUrl}/api/auth/login`, {
 			email,
 			password,
 		});
@@ -68,11 +74,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		setUser(jwtDecode<User>(res.data.token));
 		setIsAuthenticated(true);
 		closeModals();
-		window.location.reload();
+		router.push("/learn");
 	};
 
 	const signup = async (name: string, email: string, password: string) => {
-		const res = await axios.post(`${process.env.BASE_URL}/api/auth/signup`, {
+		const res = await axios.post(`${apiBaseUrl}/api/auth/signup`, {
 			name,
 			email,
 			password,
@@ -83,14 +89,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		setUser(jwtDecode<User>(res.data.token));
 		setIsAuthenticated(true);
 		closeModals();
-		window.location.reload();
+		router.push("/learn");
 	};
 
 	const logout = () => {
 		localStorage.removeItem("token");
 		setUser(null);
 		setIsAuthenticated(false);
-		window.location.reload();
+		router.push("/");
 	};
 
 	const openLoginModal = () => {

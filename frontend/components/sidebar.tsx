@@ -35,7 +35,7 @@ export default function Sidebar() {
 		const fetchSummaries = async () => {
 			try {
 				setLoading(true);
-				const response = await fetch(`${process.env.BASE_URL}/api/summaries`);
+				const response = await fetch(`${process.env.BASE_URL}/api/summary/`);
 				if (!response.ok) {
 					throw new Error("Failed to fetch summaries");
 				}

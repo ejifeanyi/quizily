@@ -37,13 +37,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [showLoginModal, setShowLoginModal] = useState(false);
 	const [showSignupModal, setShowSignupModal] = useState(false);
+	const [loading, setLoading] = useState(true);
 	const router = useRouter();
 
-	// Base URL for API requests
 	const apiBaseUrl =
 		process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
 
-	// Load user from token on page refresh
 	useEffect(() => {
 		const token = localStorage.getItem("token");
 		if (token) {
@@ -57,39 +56,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				} else {
 					setUser(decoded);
 					setIsAuthenticated(true);
+
+					const timeout = (decoded.exp - currentTime) * 1000;
+					setTimeout(logout, timeout);
 				}
 			} catch (error) {
 				console.error("Invalid token", error);
 				logout();
 			}
 		}
+		setLoading(false);
 	}, []);
 
 	const login = async (email: string, password: string) => {
-		const res = await axios.post(`${apiBaseUrl}/api/auth/login`, {
-			email,
-			password,
-		});
-		localStorage.setItem("token", res.data.token);
-		setUser(jwtDecode<User>(res.data.token));
-		setIsAuthenticated(true);
-		closeModals();
-		router.push("/learn");
+		try {
+			const res = await axios.post(`${apiBaseUrl}/api/auth/login`, {
+				email,
+				password,
+			});
+			localStorage.setItem("token", res.data.token);
+			setUser(jwtDecode<User>(res.data.token));
+			setIsAuthenticated(true);
+			closeModals();
+			router.push("/learn");
+		} catch (error) {
+			console.error("Login failed", error);
+			throw new Error("Invalid email or password");
+		}
 	};
 
 	const signup = async (name: string, email: string, password: string) => {
-		const res = await axios.post(`${apiBaseUrl}/api/auth/signup`, {
-			name,
-			email,
-			password,
-		});
-
-		localStorage.setItem("token", res.data.token);
-		console.log("token", res.data.token);
-		setUser(jwtDecode<User>(res.data.token));
-		setIsAuthenticated(true);
-		closeModals();
-		router.push("/learn");
+		try {
+			const res = await axios.post(`${apiBaseUrl}/api/auth/signup`, {
+				name,
+				email,
+				password,
+			});
+			localStorage.setItem("token", res.data.token);
+			setUser(jwtDecode<User>(res.data.token));
+			setIsAuthenticated(true);
+			closeModals();
+			router.push("/learn");
+		} catch (error) {
+			console.error("Signup failed", error);
+			throw new Error("Signup failed. Please try again.");
+		}
 	};
 
 	const logout = () => {
@@ -113,6 +124,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		setShowLoginModal(false);
 		setShowSignupModal(false);
 	};
+
+	if (loading) {
+		return <div>Loading...</div>;
+	}
 
 	return (
 		<AuthContext.Provider

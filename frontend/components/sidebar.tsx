@@ -35,9 +35,19 @@ export default function Sidebar() {
 		const fetchSummaries = async () => {
 			try {
 				setLoading(true);
-				const response = await fetch(`${process.env.BASE_URL}/api/summary/`);
+				const token = localStorage.getItem("token");
+				const response = await fetch(
+					`${process.env.NEXT_PUBLIC_BASE_URL}/api/summary/summaries`,
+					{
+						headers: {
+							Authorization: `Bearer ${token}`,
+						},
+					}
+				);
 				if (!response.ok) {
-					throw new Error("Failed to fetch summaries");
+					throw new Error(
+						`Failed to fetch summaries: ${response.status} ${response.statusText}`
+					);
 				}
 				const data = await response.json();
 				setSummaries(data);
@@ -71,25 +81,27 @@ export default function Sidebar() {
 	const { today, previous } = groupSummaries(summaries);
 
 	return (
-		<aside className="w-72 min-h-screen border-r border-border pr-4 bg-background flex flex-col">
-			<div className="flex items-center justify-between mb-4">
+		<aside className="h-screen flex flex-col border-r border-border">
+			<div className="flex items-center justify-between p-4 border-b">
 				<h2 className="text-sm font-semibold">Summaries</h2>
 				<Button size="icon" variant="outline" onClick={handleCreateSummary}>
 					<Plus className="h-5 w-5" />
 				</Button>
 			</div>
 
-			<div className="relative mb-4">
-				<Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-				<Input
-					placeholder="Search summaries..."
-					value={search}
-					onChange={(e) => setSearch(e.target.value)}
-					className="pl-10"
-				/>
+			<div className="p-4 border-b">
+				<div className="relative">
+					<Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+					<Input
+						placeholder="Search summaries..."
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
+						className="pl-10"
+					/>
+				</div>
 			</div>
 
-			<div className="space-y-4 overflow-auto flex-1 scrollbar-hide">
+			<div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
 				{loading ? (
 					<div className="flex justify-center p-4">
 						<p className="text-sm text-muted-foreground">

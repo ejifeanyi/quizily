@@ -77,7 +77,6 @@ const Signup = () => {
 		setIsLoading(true);
 		try {
 			await signup(name, email, password);
-			// Clear form after successful signup
 			setName("");
 			setEmail("");
 			setPassword("");

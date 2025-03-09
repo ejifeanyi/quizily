@@ -53,7 +53,6 @@ const Login = () => {
 		setIsLoading(true);
 		try {
 			await login(email, password);
-			// Clear form after successful login
 			setEmail("");
 			setPassword("");
 			setErrors({});

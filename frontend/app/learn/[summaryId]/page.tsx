@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Sidebar from "@/components/sidebar";
-import { useAuth } from "../AuthProvider";
-import UploadTextbookPage from "@/components/upload-textbook";
+import Summary from "@/components/summary";
+import { useAuth } from "@/app/AuthProvider";
 
-// This is the main Learn page that will show the upload component
-export default function Learn() {
+export default function SummaryPage() {
 	const { isAuthenticated } = useAuth();
 	const router = useRouter();
+	const params = useParams();
+	const summaryId = params?.summaryId as string;
 
 	useEffect(() => {
 		if (!isAuthenticated) {
@@ -24,9 +25,9 @@ export default function Learn() {
 	return (
 		<div className="flex h-screen">
 			<Sidebar />
-			<div className="flex-grow p-6 overflow-y-auto">
-				<div className="flex items-center justify-center h-full">
-					<UploadTextbookPage />
+			<div className="flex-grow overflow-y-auto">
+				<div className="max-w-4xl mx-auto">
+					<Summary summaryId={summaryId} />
 				</div>
 			</div>
 		</div>

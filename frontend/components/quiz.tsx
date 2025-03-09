@@ -20,10 +20,9 @@ interface QuizProps {
 
 interface QuizData {
 	quizId: string;
-	questions: string; // Raw text from the model, need to parse
+	questions: string;
 }
 
-// Parsed question structure
 interface Question {
 	id: string;
 	text: string;
@@ -55,7 +54,6 @@ export default function Quiz({ summaryId }: QuizProps) {
 				setLoading(true);
 				console.log("Checking for existing quiz for summary ID:", summaryId);
 
-				// First check if quiz already exists
 				const token = localStorage.getItem("token");
 				const response = await fetch(
 					`${process.env.NEXT_PUBLIC_BASE_URL}/api/quiz/summaries/${summaryId}`,
@@ -68,11 +66,13 @@ export default function Quiz({ summaryId }: QuizProps) {
 
 				if (response.ok) {
 					const data = await response.json();
+					console.log("Fetched quiz data:", data);
 					setQuizData(data);
 					const questions = parseQuizQuestions(data.questions);
+					console.log("Parsed questions:", questions);
 					setParsedQuestions(questions);
 				} else {
-					// Quiz doesn't exist yet, we'll need to generate one
+					console.log("No existing quiz found, generating new quiz");
 					setGenerating(true);
 					await generateQuiz();
 				}
@@ -91,6 +91,7 @@ export default function Quiz({ summaryId }: QuizProps) {
 		try {
 			setGenerating(true);
 			const token = localStorage.getItem("token");
+			console.log("Generating new quiz for summary ID:", summaryId);
 
 			const response = await fetch(
 				`${process.env.NEXT_PUBLIC_BASE_URL}/api/quiz/generate`,
@@ -109,9 +110,11 @@ export default function Quiz({ summaryId }: QuizProps) {
 			}
 
 			const data = await response.json();
+			console.log("Generated quiz data:", data);
 			setQuizData(data);
 
 			const questions = parseQuizQuestions(data.questions);
+			console.log("Parsed generated questions:", questions);
 			setParsedQuestions(questions);
 		} catch (error) {
 			console.error("Error generating quiz:", error);
@@ -121,80 +124,125 @@ export default function Quiz({ summaryId }: QuizProps) {
 		}
 	};
 
-	// Function to parse the quiz questions text into structured data
 	const parseQuizQuestions = (questionsText: string): Question[] => {
-		// This is a simplified parsing logic - you may need to adjust based on
-		// the exact format returned by your AI model
-
+		console.log("Raw quiz data to parse:", questionsText);
 		const questions: Question[] = [];
 
-		// Split by question numbers 1., 2., etc.
-		const questionBlocks = questionsText.split(/\n\s*\d+\.\s+/).filter(Boolean);
+		// Split the text into individual questions using the number pattern (e.g., "1.", "2.", etc.)
+		const questionBlocks = questionsText.split(/\d+\.\s+/).filter(Boolean);
 
 		questionBlocks.forEach((block, index) => {
-			const lines = block.split("\n").filter((line) => line.trim() !== "");
-
-			// First line is the question
-			const questionText = lines[0];
-
-			const options: { id: string; text: string; isCorrect: boolean }[] = [];
-			let answerLine = "";
-
-			// Extract options and answer
-			lines.slice(1).forEach((line) => {
-				if (line.match(/^[a-d]\)\s+/) || line.match(/^[a-d]\.\s+/)) {
-					// This is an option
-					const optionId = line.substring(0, 1);
-					const optionText = line
-						.substring(
-							line.indexOf(")") !== -1
-								? line.indexOf(")") + 1
-								: line.indexOf(".") + 1
-						)
-						.trim();
-
-					options.push({
-						id: optionId,
-						text: optionText,
-						isCorrect: false,
-					});
-				} else if (
-					line.toLowerCase().includes("answer:") ||
-					line.toLowerCase().includes("correct answer:") ||
-					line.toLowerCase().includes("correct:")
-				) {
-					answerLine = line;
-				}
-			});
-
-			// Mark the correct answer
-			if (answerLine) {
-				// Extract the answer letter (a, b, c, d)
-				const match = answerLine.match(/[a-d](?:\)|\.|\s|$)/i);
-				if (match) {
-					const correctAnswer = match[0].substring(0, 1).toLowerCase();
-
-					// Find and mark the correct option
-					const correctOption = options.find(
-						(opt) => opt.id.toLowerCase() === correctAnswer
-					);
-					if (correctOption) {
-						correctOption.isCorrect = true;
-					}
-				}
+			const question = parseQuestionBlock(block.trim(), index);
+			if (question) {
+				questions.push(question);
 			}
-
-			questions.push({
-				id: `q${index + 1}`,
-				text: questionText,
-				options: options,
-			});
 		});
 
+		console.log(`Final parsed questions (${questions.length}):`, questions);
 		return questions;
 	};
 
+	// Fixed parsing function
+	function parseQuestionBlock(block: string, index: number): Question | null {
+		console.log(`Processing question block ${index + 1}:`, block);
+
+		// Split into lines
+		const lines = block
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean);
+
+		if (lines.length < 3) {
+			console.warn(`Question block ${index + 1} has insufficient content`);
+			return null;
+		}
+
+		// Extract question text (first line)
+		const questionText = lines[0]
+			.replace(/^\*\*/, "")
+			.replace(/\*\*$/, "")
+			.trim();
+		console.log(`Question ${index + 1} text: "${questionText}"`);
+
+		// Extract options and answer
+		const options: { id: string; text: string; isCorrect: boolean }[] = [];
+		let correctAnswer = "";
+
+		// Look for the correct answer first
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			if (line.includes("**Correct Answer:")) {
+				const answerMatch = line.match(/\*\*Correct Answer:\s*([A-D])\*\*/i);
+				if (answerMatch) {
+					correctAnswer = answerMatch[1].toLowerCase();
+					console.log(`Found correct answer: ${correctAnswer}`);
+				}
+			}
+		}
+
+		// Extract options
+		for (let i = 1; i < lines.length; i++) {
+			const line = lines[i];
+
+			// Match options like "- A. text" or "- A text"
+			const optionMatch = line.match(/^-\s*([A-D])\.?\s*(.*)/i);
+			if (optionMatch) {
+				const optionId = optionMatch[1].toLowerCase();
+				let optionText = optionMatch[2].trim();
+
+				// Remove any potential markdown formatting
+				optionText = optionText.replace(/\*\*/g, "");
+
+				console.log(`Found option ${optionId}: "${optionText}"`);
+
+				options.push({
+					id: optionId,
+					text: optionText,
+					isCorrect: optionId.toLowerCase() === correctAnswer.toLowerCase(),
+				});
+			}
+		}
+
+		// If we didn't find a correct answer mark, check if any option is marked as correct
+		if (!correctAnswer && options.length > 0) {
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i];
+				for (const option of options) {
+					if (
+						line.includes(`**${option.id.toUpperCase()}**`) ||
+						line.includes(`**${option.id.toUpperCase()}.**`)
+					) {
+						option.isCorrect = true;
+						correctAnswer = option.id;
+						console.log(`Found option ${option.id} marked as correct in text`);
+						break;
+					}
+				}
+				if (correctAnswer) break;
+			}
+		}
+
+		// If still no correct answer found, default to first option
+		if (!correctAnswer && options.length > 0) {
+			options[0].isCorrect = true;
+			console.log(`No correct answer identified, defaulting to first option`);
+		}
+
+		// Only return a question if we have options
+		if (options.length > 0) {
+			return {
+				id: `q${index + 1}`,
+				text: questionText,
+				options: options,
+			};
+		}
+
+		console.warn(`Question ${index + 1} has no valid options, skipping`);
+		return null;
+	}
+
 	const handleOptionSelect = (questionId: string, optionId: string) => {
+		console.log(`Selected option ${optionId} for question ${questionId}`);
 		setSelectedOptions((prev) => ({
 			...prev,
 			[questionId]: optionId,
@@ -203,8 +251,10 @@ export default function Quiz({ summaryId }: QuizProps) {
 
 	const handleNext = () => {
 		if (currentQuestionIndex < parsedQuestions.length - 1) {
+			console.log(`Moving to question ${currentQuestionIndex + 2}`);
 			setCurrentQuestionIndex(currentQuestionIndex + 1);
 		} else {
+			console.log("Quiz completed, calculating score");
 			calculateScore();
 			setShowResults(true);
 		}
@@ -212,6 +262,7 @@ export default function Quiz({ summaryId }: QuizProps) {
 
 	const handlePrevious = () => {
 		if (currentQuestionIndex > 0) {
+			console.log(`Moving back to question ${currentQuestionIndex}`);
 			setCurrentQuestionIndex(currentQuestionIndex - 1);
 		}
 	};
@@ -220,22 +271,44 @@ export default function Quiz({ summaryId }: QuizProps) {
 		if (!parsedQuestions.length) return;
 
 		let correctAnswers = 0;
+		const results = [];
+
 		parsedQuestions.forEach((question) => {
 			const selectedOption = selectedOptions[question.id];
 			const correctOption = question.options.find((opt) => opt.isCorrect);
+			const isCorrect = correctOption && selectedOption === correctOption.id;
 
-			if (correctOption && selectedOption === correctOption.id) {
+			if (isCorrect) {
 				correctAnswers++;
 			}
+
+			results.push({
+				question: question.text,
+				selectedOption:
+					question.options.find((opt) => opt.id === selectedOption)?.text ||
+					"Not answered",
+				correctOption: correctOption?.text || "Unknown",
+				isCorrect,
+			});
+		});
+
+		console.log("Quiz results:", {
+			totalQuestions: parsedQuestions.length,
+			correctAnswers,
+			score: `${correctAnswers}/${parsedQuestions.length}`,
+			percentage: Math.round((correctAnswers / parsedQuestions.length) * 100),
+			detailedResults: results,
 		});
 
 		setScore(correctAnswers);
 	};
 
 	const handleReturnToSummary = () => {
+		console.log("Returning to summary page");
 		router.push(`/learn/${summaryId}`);
 	};
 
+	// Check if we have valid quiz data
 	if (!summaryId) {
 		console.log("No summary ID provided");
 		return null;
@@ -254,7 +327,15 @@ export default function Quiz({ summaryId }: QuizProps) {
 		);
 	}
 
-	if (!quizData || !parsedQuestions.length) {
+	// Debug info about the current state
+	console.log("Current state:", {
+		quizDataExists: !!quizData,
+		questionsCount: parsedQuestions.length,
+		currentQuestionIndex,
+		selectedOptionsCount: Object.keys(selectedOptions).length,
+	});
+
+	if (!quizData || parsedQuestions.length === 0) {
 		return (
 			<div className="flex flex-col items-center justify-center p-6 space-y-4">
 				<p className="text-sm text-muted-foreground">
@@ -306,10 +387,10 @@ export default function Quiz({ summaryId }: QuizProps) {
 												: "bg-red-50 border border-red-200"
 										}`}
 									>
-										<p className="font-medium mb-2">
+										<p className="font-medium mb-2 text-secondary">
 											{index + 1}. {question.text}
 										</p>
-										<p className="text-sm">
+										<p className="text-sm text-secondary">
 											Your answer:{" "}
 											<span
 												className={
@@ -324,7 +405,7 @@ export default function Quiz({ summaryId }: QuizProps) {
 											</span>
 										</p>
 										{!isCorrect && correctOption && (
-											<p className="text-sm mt-1">
+											<p className="text-sm mt-1 text-secondary">
 												Correct answer:{" "}
 												<span className="text-green-600 font-medium">
 													{correctOption.text}
@@ -344,11 +425,20 @@ export default function Quiz({ summaryId }: QuizProps) {
 		);
 	}
 
+	// Make sure we have a valid current question index
 	if (currentQuestionIndex >= parsedQuestions.length) {
+		console.error(
+			"Invalid question index:",
+			currentQuestionIndex,
+			"max:",
+			parsedQuestions.length - 1
+		);
+		setCurrentQuestionIndex(0);
 		return null;
 	}
 
 	const currentQuestion = parsedQuestions[currentQuestionIndex];
+	console.log("Current question:", currentQuestion);
 
 	return (
 		<div className="max-w-2xl mx-auto p-6">

@@ -11,7 +11,6 @@ export async function generateSummary(req, res, next) {
 			});
 		}
 
-		// Fetch the textbook content and its chunks
 		const textbook = await prisma.textbook.findUnique({
 			where: { id: textbookId },
 			include: {
@@ -27,18 +26,13 @@ export async function generateSummary(req, res, next) {
 			return res.status(404).json({ error: "Textbook not found" });
 		}
 
-		// Use the pre-split chunks from the database
 		const documents = textbook.chunks.map((chunk) => ({
 			pageContent: chunk.content,
 			metadata: chunk.metadata,
 		}));
 
-		// Generate the summary
-		console.log("Generating summary...");
 		const summary = await generateVectorBasedSummary({ documents });
-		console.log("Summary generated successfully.");
 
-		// Save the summary to the database
 		const savedSummary = await prisma.summary.create({
 			data: {
 				content: summary,

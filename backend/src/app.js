@@ -6,7 +6,6 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import textbookRoutes from "./routes/textbookRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
-import recommendationRoutes from "./routes/recommendationRoutes.js";
 import summaryRoutes from "./routes/summaryRoutes.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -25,7 +24,6 @@ app.use(morgan("dev"));
 app.use("/api/auth", authRoutes);
 app.use("/api/textbook", textbookRoutes);
 app.use("/api/quiz", quizRoutes);
-app.use("/api/recommendation", recommendationRoutes);
 app.use("/api/summary", summaryRoutes);
 
 // Health Check
